@@ -105,7 +105,7 @@ bool ftpManager::connectUrl()
 
 void ftpManager::send(const QString localPath, const QString targetPath)
 {
-    qDebug()<<localPath<<endl<<targetPath<<endl;
+    qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
     return;
 
 
@@ -130,7 +130,7 @@ void ftpManager::send(const QString localPath, const QString targetPath)
 
 void ftpManager::receive(const QString localPath, const QString targetPath)
 {
-    qDebug()<<localPath<<endl<<targetPath<<endl;
+    qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
     return;
 
     //判断路径是文件还是文件夹
