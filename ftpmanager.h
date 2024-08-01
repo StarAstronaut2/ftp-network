@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 #include "qmylistwidget.h"
+#include <QRegularExpression>
 
 struct fileSystem{
     QDir* currentDir;

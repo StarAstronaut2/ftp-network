@@ -121,6 +121,7 @@ public:
         password = new QLineEdit(layoutWidget);
         password->setObjectName("password");
         password->setMinimumSize(QSize(150, 25));
+        password->setEchoMode(QLineEdit::EchoMode::Password);
 
         gridLayout->addWidget(password, 2, 1, 1, 1);
 

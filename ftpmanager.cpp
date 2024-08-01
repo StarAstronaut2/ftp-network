@@ -73,40 +73,118 @@ void ftpManager::setUrl(QString ip, QString user, QString password)
     pUrl.setPassword(password);
     //qDebug()<<pUrl.toString()<<endl;
 }
-
 bool ftpManager::connectUrl()
 {
-    if(!pUrl.isValid())
+    if (!pUrl.isValid())
     {
-        QMessageBox::information(parent,"链接无效","链接无效");
+        QMessageBox::information(parent, "链接无效", "链接无效");
         return false;
     }
 
     pUrl.setPath("/");
-    target->currentDir->setPath("\\\\"+pUrl.host()+'/');
+    target->currentDir->setPath("\\\\" + pUrl.host() + '/');
 
-    QTcpSocket socket(0);
-    socket.abort(); //取消原有连接
-    socket.connectToHost(pUrl.host(),80); //建立一个TCP连接
-    //qDebug()<<pUrl.host()<<endl;
-    socket.waitForConnected(1000);
-    if(socket.state() == QAbstractSocket::ConnectedState)
+    QTcpSocket socket;
+    socket.abort(); // 取消原有连接
+    socket.connectToHost(pUrl.host(), 21); // 建立一个TCP连接
+    if (!socket.waitForConnected(10000)) // 等待连接成功，超时10000毫秒
     {
-        socket.close();
-
-        showDirEntry(target);
-        this->target->path->setText(this->local->currentDir->path());
-        return true;
+        QMessageBox::information(parent, "连接失败", "连接失败");
+        qDebug() << "Failed to connect to host:" << pUrl.host();
+        return false;
     }
-    QMessageBox::information(parent,"连接失败","连接失败");
-    socket.close();
-    return false;
+
+    QTextStream stream(&socket);
+    QString response;
+
+    // 读取服务器欢迎信息
+    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    {
+        response = socket.readAll();
+        qDebug() << "Server response:" << response;
+    }
+    else
+    {
+        qDebug() << "Failed to read server response.";
+        QMessageBox::information(parent, "连接失败", "读取服务器响应失败");
+        return false;
+    }
+
+    // 发送用户名
+    stream << "USER " << pUrl.userName() << "\r\n";
+    stream.flush();
+    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    {
+        response = socket.readAll();
+        qDebug() << "USER response:" << response;
+        if (!response.startsWith("331"))
+        {
+            QMessageBox::information(parent, "用户名无效", "用户名无效");
+            socket.close();
+            return false;
+        }
+    }
+    else
+    {
+        qDebug() << "Failed to read USER response.";
+        QMessageBox::information(parent, "连接失败", "读取用户名响应失败");
+        return false;
+    }
+
+    // 发送密码
+    stream << "PASS " << pUrl.password() << "\r\n";
+    stream.flush();
+    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    {
+        response = socket.readAll();
+        qDebug() << "PASS response:" << response;
+        if (!response.startsWith("230"))
+        {
+            QMessageBox::information(parent, "密码无效", "密码无效");
+            socket.close();
+            return false;
+        }
+    }
+    else
+    {
+        qDebug() << "Failed to read PASS response.";
+        QMessageBox::information(parent, "连接失败", "读取密码响应失败");
+        return false;
+    }
+
+    stream << "PWD\r\n";
+    stream.flush();
+    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    {
+        response = socket.readAll();
+        qDebug() << "PWD response:" << response;
+        // 提取路径
+        QRegularExpression re("\"([^\"]*)\"");
+        QRegularExpressionMatch match = re.match(response);
+        if (match.hasMatch()) {
+            QString currentDir = match.captured(1);
+            target->currentDir->setPath("\\\\" + pUrl.host() + currentDir);
+            qDebug() << "Current directory set to:" << currentDir;
+        }
+    }
+    else
+    {
+        qDebug() << "Failed to read PWD response.";
+        socket.close();
+        QMessageBox::information(parent, "连接失败", "读取当前目录失败");
+        return false;
+    }
+
+    socket.close(); // 连接成功后关闭套接字
+    showDirEntry(target); // 刷新 target 目录显示
+    this->target->path->setText(this->local->currentDir->path()); // 设置 target 的路径
+    return true;
 }
 
 void ftpManager::send(const QString localPath, const QString targetPath)
 {
     qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
-    return;
+    // return;
 
 
     pUrl.setPath(targetPath);
@@ -131,7 +209,7 @@ void ftpManager::send(const QString localPath, const QString targetPath)
 void ftpManager::receive(const QString localPath, const QString targetPath)
 {
     qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
-    return;
+    // return;
 
     //判断路径是文件还是文件夹
     //下载前判断是否是断点续传
