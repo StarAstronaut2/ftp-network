@@ -86,7 +86,7 @@ public:
         switchWidget->setObjectName("switchWidget");
         switchWidget->setMinimumSize(QSize(1100, 900));
         switchWidget->setSizeIncrement(QSize(0, 0));
-        switchWidget->setLayoutDirection(Qt::LeftToRight);
+        switchWidget->setLayoutDirection(Qt::LayoutDirection::LeftToRight);
         switchWidget->setAutoFillBackground(false);
         login = new QWidget();
         login->setObjectName("login");
@@ -114,9 +114,9 @@ public:
         label_2 = new QLabel(layoutWidget);
         label_2->setObjectName("label_2");
         label_2->setMinimumSize(QSize(50, 30));
-        label_2->setAlignment(Qt::AlignCenter);
+        label_2->setAlignment(Qt::AlignmentFlag::AlignCenter);
 
-        gridLayout->addWidget(label_2, 0, 0, 1, 1, Qt::AlignLeft);
+        gridLayout->addWidget(label_2, 0, 0, 1, 1, Qt::AlignmentFlag::AlignLeft);
 
         password = new QLineEdit(layoutWidget);
         password->setObjectName("password");
@@ -133,16 +133,16 @@ public:
         label_4 = new QLabel(layoutWidget);
         label_4->setObjectName("label_4");
         label_4->setMinimumSize(QSize(50, 30));
-        label_4->setAlignment(Qt::AlignCenter);
+        label_4->setAlignment(Qt::AlignmentFlag::AlignCenter);
 
-        gridLayout->addWidget(label_4, 1, 0, 1, 1, Qt::AlignHCenter);
+        gridLayout->addWidget(label_4, 1, 0, 1, 1, Qt::AlignmentFlag::AlignHCenter);
 
         label = new QLabel(layoutWidget);
         label->setObjectName("label");
         label->setMinimumSize(QSize(50, 30));
-        label->setAlignment(Qt::AlignCenter);
+        label->setAlignment(Qt::AlignmentFlag::AlignCenter);
 
-        gridLayout->addWidget(label, 2, 0, 1, 1, Qt::AlignHCenter);
+        gridLayout->addWidget(label, 2, 0, 1, 1, Qt::AlignmentFlag::AlignHCenter);
 
 
         verticalLayout_3->addLayout(gridLayout);
@@ -152,7 +152,7 @@ public:
         connect->setMinimumSize(QSize(50, 0));
         connect->setSizeIncrement(QSize(0, 50));
 
-        verticalLayout_3->addWidget(connect, 0, Qt::AlignHCenter);
+        verticalLayout_3->addWidget(connect, 0, Qt::AlignmentFlag::AlignHCenter);
 
         switchWidget->addWidget(login);
         transfer = new QWidget();
@@ -194,18 +194,25 @@ public:
 
         switchWidget->addWidget(transfer);
 
-        gridLayout_2->addWidget(switchWidget, 0, 0, 1, 1, Qt::AlignHCenter|Qt::AlignVCenter);
+        gridLayout_2->addWidget(switchWidget, 0, 0, 1, 1, Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignVCenter);
 
         MainWindow->setCentralWidget(centralwidget);
         menubar = new QMenuBar(MainWindow);
         menubar->setObjectName("menubar");
-        menubar->setGeometry(QRect(0, 0, 1200, 21));
+        menubar->setGeometry(QRect(0, 0, 1200, 18));
         menu = new QMenu(menubar);
         menu->setObjectName("menu");
         MainWindow->setMenuBar(menubar);
         statusbar = new QStatusBar(MainWindow);
         statusbar->setObjectName("statusbar");
         MainWindow->setStatusBar(statusbar);
+        QWidget::setTabOrder(ip, user);
+        QWidget::setTabOrder(user, password);
+        QWidget::setTabOrder(password, connect);
+        QWidget::setTabOrder(connect, localPath);
+        QWidget::setTabOrder(localPath, local);
+        QWidget::setTabOrder(local, targetPath);
+        QWidget::setTabOrder(targetPath, target);
 
         menubar->addAction(menu->menuAction());
         menu->addAction(returnMain);

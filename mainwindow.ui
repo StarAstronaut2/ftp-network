@@ -54,7 +54,7 @@
     <bool>false</bool>
    </property>
    <layout class="QGridLayout" name="gridLayout_2">
-    <item row="0" column="0" alignment="Qt::AlignHCenter|Qt::AlignVCenter">
+    <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignHCenter|Qt::AlignmentFlag::AlignVCenter">
      <widget class="QStackedWidget" name="switchWidget">
       <property name="minimumSize">
        <size>
@@ -69,7 +69,7 @@
        </size>
       </property>
       <property name="layoutDirection">
-       <enum>Qt::LeftToRight</enum>
+       <enum>Qt::LayoutDirection::LeftToRight</enum>
       </property>
       <property name="autoFillBackground">
        <bool>false</bool>
@@ -145,7 +145,7 @@
              </property>
             </widget>
            </item>
-           <item row="0" column="0" alignment="Qt::AlignLeft">
+           <item row="0" column="0" alignment="Qt::AlignmentFlag::AlignLeft">
             <widget class="QLabel" name="label_2">
              <property name="minimumSize">
               <size>
@@ -157,7 +157,7 @@
               <string>IP</string>
              </property>
              <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
@@ -181,7 +181,7 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="0" alignment="Qt::AlignHCenter">
+           <item row="1" column="0" alignment="Qt::AlignmentFlag::AlignHCenter">
             <widget class="QLabel" name="label_4">
              <property name="minimumSize">
               <size>
@@ -193,11 +193,11 @@
               <string>用户</string>
              </property>
              <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
-           <item row="2" column="0" alignment="Qt::AlignHCenter">
+           <item row="2" column="0" alignment="Qt::AlignmentFlag::AlignHCenter">
             <widget class="QLabel" name="label">
              <property name="minimumSize">
               <size>
@@ -209,13 +209,13 @@
               <string>密码</string>
              </property>
              <property name="alignment">
-              <set>Qt::AlignCenter</set>
+              <set>Qt::AlignmentFlag::AlignCenter</set>
              </property>
             </widget>
            </item>
           </layout>
          </item>
-         <item alignment="Qt::AlignHCenter">
+         <item alignment="Qt::AlignmentFlag::AlignHCenter">
           <widget class="QPushButton" name="connect">
            <property name="minimumSize">
             <size>
@@ -308,7 +308,7 @@
      <x>0</x>
      <y>0</y>
      <width>1200</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu">
@@ -333,6 +333,16 @@
    <header location="global">qmylistwidget.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>ip</tabstop>
+  <tabstop>user</tabstop>
+  <tabstop>password</tabstop>
+  <tabstop>connect</tabstop>
+  <tabstop>localPath</tabstop>
+  <tabstop>local</tabstop>
+  <tabstop>targetPath</tabstop>
+  <tabstop>target</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

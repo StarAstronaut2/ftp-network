@@ -1,5 +1,6 @@
 #include "qmylistwidget.h"
 #include <QDebug>
+#include <QFont>
 
 QMyListWidget::QMyListWidget(QWidget *parent)
     : QListWidget(parent)
@@ -11,6 +12,11 @@ QMyListWidget::QMyListWidget(QWidget *parent)
     connect(dealAction, &QAction::triggered, [=](){
         emit load('/' + selectedItem);
     });
+
+    // 调整整个 QListWidget 的字体大小
+    QFont font = this->font();
+    font.setPointSize(16);  // 设置字体大小为 12，可以根据需要调整
+    this->setFont(font);
 }
 
 QMyListWidget::~QMyListWidget()
