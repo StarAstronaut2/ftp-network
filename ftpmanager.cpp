@@ -3,6 +3,8 @@
 ftpManager::ftpManager(QWidget *parent, QMyListWidget* local, QMyListWidget* target, QLineEdit* localPath, QLineEdit* targetPath)
         :parent(parent)
 {
+    controlSocket = new QTcpSocket();
+
     this->local = new fileSystem(QDir::rootPath(), local, localPath);
     this->target = new fileSystem("", target, targetPath);
 
@@ -30,7 +32,18 @@ ftpManager::ftpManager(QWidget *parent, QMyListWidget* local, QMyListWidget* tar
     pUrl.setScheme("ftp");
     pUrl.setPort(21);
 }
-
+QString ftpManager::readResponse() {
+    QString response;
+    // 模拟读取服务器的所有响应
+    while (true) {
+        QString line = controlSocket->readLine();  // 假设你有一个套接字类实例 socket
+        response += line;
+        if (line.contains("\r\n")) {
+            break;
+        }
+    }
+    return response;
+}
 void ftpManager::showDirEntry(fileSystem* toshow)
 {
     toshow->ui->clear();
@@ -84,23 +97,21 @@ bool ftpManager::connectUrl()
     pUrl.setPath("/");
     target->currentDir->setPath("\\\\" + pUrl.host() + '/');
 
-    QTcpSocket socket;
-    socket.abort(); // 取消原有连接
-    socket.connectToHost(pUrl.host(), 21); // 建立一个TCP连接
-    if (!socket.waitForConnected(10000)) // 等待连接成功，超时10000毫秒
+    controlSocket->abort(); // 取消原有连接
+    controlSocket->connectToHost(pUrl.host(), 21); // 建立一个TCP连接
+    if (!controlSocket->waitForConnected(10000)) // 等待连接成功，超时10000毫秒
     {
         QMessageBox::information(parent, "连接失败", "连接失败");
         qDebug() << "Failed to connect to host:" << pUrl.host();
         return false;
     }
 
-    QTextStream stream(&socket);
     QString response;
 
     // 读取服务器欢迎信息
-    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    if (controlSocket->waitForReadyRead(10000)) // 等待服务器响应
     {
-        response = socket.readAll();
+        response = controlSocket->readAll();
         qDebug() << "Server response:" << response;
     }
     else
@@ -110,17 +121,15 @@ bool ftpManager::connectUrl()
         return false;
     }
 
-    // 发送用户名
-    stream << "USER " << pUrl.userName() << "\r\n";
-    stream.flush();
-    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    sendCommand("USER " + pUrl.userName());
+    if (controlSocket->waitForReadyRead(10000)) // 等待服务器响应
     {
-        response = socket.readAll();
+        response = controlSocket->readAll();
         qDebug() << "USER response:" << response;
         if (!response.startsWith("331"))
         {
             QMessageBox::information(parent, "用户名无效", "用户名无效");
-            socket.close();
+            controlSocket->close();
             return false;
         }
     }
@@ -131,17 +140,15 @@ bool ftpManager::connectUrl()
         return false;
     }
 
-    // 发送密码
-    stream << "PASS " << pUrl.password() << "\r\n";
-    stream.flush();
-    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    sendCommand("PASS " + pUrl.password());
+    if (controlSocket->waitForReadyRead(10000)) // 等待服务器响应
     {
-        response = socket.readAll();
+        response = controlSocket->readAll();
         qDebug() << "PASS response:" << response;
         if (!response.startsWith("230"))
         {
             QMessageBox::information(parent, "密码无效", "密码无效");
-            socket.close();
+            controlSocket->close();
             return false;
         }
     }
@@ -152,91 +159,217 @@ bool ftpManager::connectUrl()
         return false;
     }
 
-    stream << "PWD\r\n";
-    stream.flush();
-    if (socket.waitForReadyRead(10000)) // 等待服务器响应
+    // 发送 SYST 命令以确保服务器进入正确模式
+    sendCommand("SYST");
+    if (controlSocket->waitForReadyRead(10000)) // 等待服务器响应
     {
-        response = socket.readAll();
-        qDebug() << "PWD response:" << response;
-        // 提取路径
-        QRegularExpression re("\"([^\"]*)\"");
-        QRegularExpressionMatch match = re.match(response);
+        response = controlSocket->readAll();
+        qDebug() << "SYST response:" << response;
+    }
+    else
+    {
+        qDebug() << "Failed to read SYST response.";
+    }
+
+    sendCommand("PWD");
+    if (controlSocket->waitForReadyRead(10000)) // 等待服务器响应
+    {
+        QString pwdResponse = controlSocket->readAll();
+        qDebug() << "PWD response:" << pwdResponse;
+        QRegularExpression re("257 \"(.*)\"");
+
+        auto match = re.match(pwdResponse);
+
         if (match.hasMatch()) {
             QString currentDir = match.captured(1);
             target->currentDir->setPath("\\\\" + pUrl.host() + currentDir);
             qDebug() << "Current directory set to:" << currentDir;
+        } else {
+            qDebug() << "Failed to parse PWD response:" << pwdResponse;
+            // 如果无法解析 PWD 响应，使用根目录
+            target->currentDir->setPath("\\\\" + pUrl.host() + "/");
         }
     }
     else
     {
         qDebug() << "Failed to read PWD response.";
-        socket.close();
+        controlSocket->close();
         QMessageBox::information(parent, "连接失败", "读取当前目录失败");
         return false;
     }
 
-    socket.close(); // 连接成功后关闭套接字
     showDirEntry(target); // 刷新 target 目录显示
     this->target->path->setText(this->local->currentDir->path()); // 设置 target 的路径
     return true;
 }
-
-void ftpManager::send(const QString localPath, const QString targetPath)
+void ftpManager::sendCommand(const QString &command)
 {
-    qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
-    // return;
+    controlSocket->write(command.toUtf8() + "\r\n");
+    controlSocket->flush();
 
+}
+QTcpSocket* ftpManager::openDataConnection()
+{
+    sendCommand("PASV");
+    if (!controlSocket->waitForReadyRead(5000)) {
+        qDebug() << "Failed to enter passive mode";
+        return nullptr;
+    }
 
-    pUrl.setPath(targetPath);
-    QNetworkRequest request(pUrl);
-    QFile file(localPath);
-    QNetworkReply *reply = manager.put(request, &file);
-    QObject::connect(reply, &QNetworkReply::uploadProgress, [](qint64 bytesSent, qint64 bytesTotal) {
-        qDebug() << "Progress:" << bytesSent << "/" << bytesTotal;
-    });
+    QString response = controlSocket->readAll();
+    QRegularExpression re("(\\d+,\\d+,\\d+,\\d+),(\\d+),(\\d+)");
+    auto match = re.match(response);
+    if (!match.hasMatch()) {
+        qDebug() << "Failed to parse PASV response";
+        return nullptr;
+    }
 
-    QObject::connect(reply, &QNetworkReply::finished, [&]() {
-        if (reply->error() == QNetworkReply::NoError) {
-               QMessageBox::information(parent,"上传成功","上传成功");
-           } else {
-               QMessageBox::information(parent,"上传失败","上传失败");
-           }
-           file.close();
-           reply->deleteLater();
-    });
+    QStringList ip = match.captured(1).split(',');
+    int port = match.captured(2).toInt() * 256 + match.captured(3).toInt();
+
+    QString ipAddress = QString("%1.%2.%3.%4").arg(ip[0], ip[1], ip[2], ip[3]);
+
+    QTcpSocket* dataSocket = new QTcpSocket();
+    dataSocket->connectToHost(ipAddress, port);
+    if (!dataSocket->waitForConnected(5000)) {
+        qDebug() << "Failed to connect data socket";
+        delete dataSocket;
+        return nullptr;
+    }
+
+    return dataSocket;
+}
+void ftpManager::closeDataConnection(QTcpSocket* dataSocket)
+{
+    dataSocket->close();
+    delete dataSocket;
 }
 
-void ftpManager::receive(const QString localPath, const QString targetPath)
+void ftpManager::receive(const QString& localPath, const QString& remotePath)
 {
-    qDebug()<<localPath<<Qt::endl<<targetPath<<Qt::endl;
-    // return;
+    QFile localFile(localPath);
+    if (!localFile.open(QIODevice::WriteOnly)) {
+        qDebug() << "Failed to open local file for writing";
+        return;
+    }
 
-    //判断路径是文件还是文件夹
-    //下载前判断是否是断点续传
-    //传输成功调用showDirEntry刷新显示目录
+    sendCommand("TYPE I");
+    sendCommand("RETR " + remotePath);
 
-    pUrl.setPath(targetPath);
-    QNetworkRequest request(pUrl);
-    QNetworkReply *reply = manager.get(request);
-    QObject::connect(reply, &QNetworkReply::downloadProgress, [](qint64 bytesReceived, qint64 bytesTotal) {
-        qDebug() << "Progress:" << bytesReceived << "/" << bytesTotal;
-    });
+    QTcpSocket* dataSocket = openDataConnection();
+    if (!dataSocket) {
+        localFile.close();
+        return;
+    }
 
-    QObject::connect(reply, &QNetworkReply::finished, [&]() {
-        if (reply->error() == QNetworkReply::NoError) {
-            QFile file(localPath);
-            if (file.open(QIODevice::WriteOnly)) {
-                file.write(reply->readAll());
-                file.close();
-                QMessageBox::information(parent,"下载成功","下载成功");
-            } else {
-                QMessageBox::information(parent,"下载失败","下载失败");
-            }
-        } else {
-            QMessageBox::information(parent,"Error",reply->errorString());
-        }
-    });
+    while (dataSocket->waitForReadyRead(5000)) {
+        localFile.write(dataSocket->readAll());
+    }
+
+    localFile.close();
+    closeDataConnection(dataSocket);
+
+    if (!controlSocket->waitForReadyRead(5000)) {
+        qDebug() << "Failed to get transfer complete response";
+        return;
+    }
+    QString response = controlSocket->readAll();
+    qDebug() << "Transfer complete:" << response;
+
+    // Refresh the local file list
+    showDirEntry(local);
 }
+
+void ftpManager::send(const QString& localPath, const QString& remotePath)
+{
+    QFile localFile(localPath);
+    if (!localFile.open(QIODevice::ReadOnly)) {
+        qDebug() << "Failed to open local file for reading";
+        return;
+    }
+
+    sendCommand("TYPE I");
+    sendCommand("STOR " + remotePath);
+
+    QTcpSocket* dataSocket = openDataConnection();
+    if (!dataSocket) {
+        localFile.close();
+        return;
+    }
+
+    while (!localFile.atEnd()) {
+        dataSocket->write(localFile.read(8192));
+    }
+
+    localFile.close();
+    closeDataConnection(dataSocket);
+
+    if (!controlSocket->waitForReadyRead(5000)) {
+        qDebug() << "Failed to get transfer complete response";
+        return;
+    }
+    QString response = controlSocket->readAll();
+    qDebug() << "Transfer complete:" << response;
+
+    // Refresh the remote file list
+    showDirEntry(target);
+}
+//void ftpManager::send(const QString localPath, const QString targetPath)
+//{
+//    qDebug()<<localPath<<endl<<targetPath<<endl;
+//    // return;
+
+
+//    pUrl.setPath(targetPath);
+//    QNetworkRequest request(pUrl);
+//    QFile file(localPath);
+//    QNetworkReply *reply = manager.put(request, &file);
+//    QObject::connect(reply, &QNetworkReply::uploadProgress, [](qint64 bytesSent, qint64 bytesTotal) {
+//        qDebug() << "Progress:" << bytesSent << "/" << bytesTotal;
+//    });
+
+//    QObject::connect(reply, &QNetworkReply::finished, [&]() {
+//        if (reply->error() == QNetworkReply::NoError) {
+//               QMessageBox::information(parent,"上传成功","上传成功");
+//           } else {
+//               QMessageBox::information(parent,"上传失败","上传失败");
+//           }
+//           file.close();
+//           reply->deleteLater();
+//    });
+//}
+
+//void ftpManager::receive(const QString localPath, const QString targetPath)
+//{
+//    qDebug()<<localPath<<endl<<targetPath<<endl;
+//    // return;
+
+//    //判断路径是文件还是文件夹
+//    //下载前判断是否是断点续传
+//    //传输成功调用showDirEntry刷新显示目录
+
+//    pUrl.setPath(targetPath);
+//    QNetworkRequest request(pUrl);
+//    QNetworkReply *reply = manager.get(request);
+//    QObject::connect(reply, &QNetworkReply::downloadProgress, [](qint64 bytesReceived, qint64 bytesTotal) {
+//        qDebug() << "Progress:" << bytesReceived << "/" << bytesTotal;
+//    });
+
+//    QObject::connect(reply, &QNetworkReply::finished, [&]() {
+//        if (reply->error() == QNetworkReply::NoError) {
+//            QFile file(localPath);
+//            if (file.open(QIODevice::WriteOnly)) {
+//                file.write(reply->readAll());
+//                file.close();
+//                QMessageBox::information(parent,"下载成功","下载成功");
+//            } else {
+//                QMessageBox::information(parent,"下载失败","下载失败");
+//            }
+//        } else {
+//            QMessageBox::information(parent,"Error",reply->errorString());
+//        }
+//    });
+//}
 
 ftpManager::~ftpManager()
 {
