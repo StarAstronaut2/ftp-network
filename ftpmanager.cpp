@@ -95,7 +95,7 @@ bool ftpManager::connectUrl()
     }
 
     pUrl.setPath("/");
-    target->currentDir->setPath("\\\\" + pUrl.host() + '/');
+    //target->currentDir->setPath("\\\\" + pUrl.host() + '/');
 
     controlSocket->abort(); // 取消原有连接
     controlSocket->connectToHost(pUrl.host(), 21); // 建立一个TCP连接
@@ -199,7 +199,7 @@ bool ftpManager::connectUrl()
     }
 
     showDirEntry(target); // 刷新 target 目录显示
-    this->target->path->setText(this->local->currentDir->path()); // 设置 target 的路径
+    this->target->path->setText(this->target->currentDir->path()); // 设置 target 的路径
     return true;
 }
 void ftpManager::sendCommand(const QString &command)
